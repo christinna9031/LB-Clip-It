@@ -30,7 +30,7 @@ You can use Math: Trigger pull to get your viewer's name and their message to po
    - The advantage is that you do not need to set up your own delay to make sure you don't post an empty clip URL in your chat 
 6. trigger_enabled = whether you want to use the extension trigger (else you can manually add a delay)
 
-**!clip done button:**
+**!clip done button:**        
 This button will trigger as soon as the clip is created (or the extension fails creating it). 
 1. math trigger pull value 1 = clip ID of your newly created clip (in the event it fails, it will be set to "error")
 2. math trigger pull value 2 = your viewer's name
