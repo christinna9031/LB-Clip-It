@@ -1,7 +1,7 @@
 # LB Clip It
  Extension for LioranBoard which lets you create clips and post them to Discord.      
  This is an updated version of the previous release in LioranBoard Discord.       
- The extension requires clips:edit scope to properly work. Make sure 'Create Clips' is ticked in the 'Link your Twitch' menu in LB Receiver and relink your Twitch account is needed. 
+ The extension requires clips:edit scope to properly work. Make sure 'Create Clips' is ticked in the 'Link your Twitch' menu in LB Receiver and relink your Twitch account if needed. 
 
 
     
