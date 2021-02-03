@@ -1,11 +1,12 @@
 # LB Clip It
  Extension for LioranBoard which lets you create clips and post them to Discord.      
- This is an updated version of the previous release in LioranBoard Discord.   
+ This is an updated version of the previous release in LioranBoard Discord.       
+ The extension requires clips:edit scope to properly work. Make sure 'Create Clips' is ticked in the 'Link your Twitch' menu in LB Receiver and relink your Twitch account is needed. 
 
 
     
  **Clip It INIT button:**        
-1. oauth_token = your broadcaster's oauth token (requires clips:edit scope)     
+1. oauth_token = your broadcaster's oauth token 
 2. channel_id = your broadcaster's channel ID you're going to create the clips from     
 3. webhook = your Discord Webhook url. See [Here](https://docs.gitlab.com/ee/user/project/integrations/discord_notifications.html) how to create a Webhook for your own Discord channel.    
 4. content = Discord post. It supports [Discord Markdown](https://support.discord.com/hc/en-us/articles/210298617-Markdown-Text-101-Chat-Formatting-Bold-Italic-Underline-) and the following custom parameters (will be automatically replaced by the extension):    
