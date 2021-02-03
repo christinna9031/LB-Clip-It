@@ -1,0 +1,562 @@
+[extension_name]
+Clip it
+[insert_external]
+<div><p>Clip it extension is installed. </p></div>
+<!--
+ * @name: Clip it, @version: 1.3, @author: Christinna#9031
+ * -->
+[insert_command]
+lioranboardclient.send('{"type":"MESSAGE","topic":"ExtensionCommand","name":"Clip it INIT","boxcount":5,"boxname1":"oauth_token","boxtype1":"string","boxname2":"channel_id","boxtype2":"string","boxname3":"webhook","boxtype3":"string","boxname4":"content","boxtype4":"string","boxname5":"username","boxtype5":"string"}');
+lioranboardclient.send('{"type":"MESSAGE","topic":"ExtensionCommand","name":"Clip it","boxcount":6,"boxname1":"author","boxtype1":"string","boxname2":"text","boxtype2":"string","boxname3":"discord_post|yes|no|","boxtype3":"string", "boxname4":"variable","boxtype4":"string","boxname5":"ext_trigger","boxtype5":"string","boxname6":"trigger_enabled|yes|no|","boxtype6":"string"}');
+[insert_hook]
+case "ClipitINIT":{
+    let clip_settings =[LioranBoardJSON.oauth_token,LioranBoardJSON.channel_id, LioranBoardJSON.webhook, LioranBoardJSON.content, LioranBoardJSON.username]
+    sessionStorage.setItem('clip_settings',JSON.stringify(clip_settings))
+    }break
+    case "Clipit":{
+      try {
+        LBCreateClip(LioranBoardJSON.author,LioranBoardJSON.text,LioranBoardJSON.discord_post,LioranBoardJSON.variable,LioranBoardJSON.ext_trigger,LioranBoardJSON.trigger_enabled)
+      }
+      catch (err){
+     lioranboardclient.send('{"type":"MESSAGE","topic":"AlertMessage","message":"ERROR: Initiate Clip It extension first."}')
+      }
+    }break
+[insert_script]
+function LBCreateClip(author, text, discord_post, variable, trigger,enabled) {
+
+    let clip_settings = JSON.parse(sessionStorage.getItem('clip_settings'))
+    const oauthtoken = clip_settings[0]
+    const channelid = clip_settings[1]
+    const discord_webhook = (clip_settings[2].includes("http")) ? clip_settings[2] : "https://discord.com/api/webhooks/0/0"
+    const content = (clip_settings[3].length>0) ? clip_settings[3] : "<clip>"
+    const username = (clip_settings[4].length>0) ? clip_settings[4] : "Clip Bot"
+    author = (author!=0)? author : "Anonymous Viewer"
+    text = (text!=0)? text : " "
+  
+  FetchClip ()
+  
+  async function fetchTwitch (url,method){
+   const response = await fetch (url, {
+      "method": method,
+        "headers": {
+      "Client-ID": TWITCH_CLIENT_ID,
+      "Authorization": "Bearer " + oauthtoken,
+      "Content-Type": "application/json",
+    }}
+    )
+    let data;
+    if (!response.ok){
+        data = await response.json()
+        let error = data.message || data.error || "Something went wrong."
+        throw new Error(error)
+      } else {
+          data = await response.json()
+    }
+    return data;	
+  }
+  
+  
+  function fetchRetry(ClipID) {
+    let retries = 8
+    return new Promise ((resolve, reject) => {
+    checkClip()
+    async function checkClip(){
+    await fetchTwitch (`https://api.twitch.tv/helix/clips?id=${ClipID}`, 'GET')
+    .then (data => {
+    if (data.data.length==0) {
+    if (!retries){reject("Clip creation failed.")}
+    else {
+    retries --
+    setTimeout (checkClip,3000)}}
+    else {
+    resolve() 
+    }
+    })
+    .catch (e => {reject("Something went wrong.")})
+  }})
+  }
+  
+  
+  async function FetchClip () {
+  let ClipID
+  const clipData = await fetchTwitch (`https://api.twitch.tv/helix/clips?broadcaster_id=${channelid}`,'POST')
+  .then (async function (data) {
+  ClipID = data.data[0].id
+  const checkClip = await fetchRetry (ClipID)
+  .then (async function () {
+  lioranboardclient.send('{"type":"MESSAGE","topic":"SetValue","valuename":"'+variable+'","value":"'+ClipID+'"}')
+  if (enabled=="yes"){
+  lioranboardclient.send('{"type":"MESSAGE","topic":"ExtensionTrigger","trigger":"'+trigger+'","value1":"'+ClipID+'","value2":"'+author+'", "value3":"'+text+'"}')
+  }
+  if (discord_post=="yes"){
+  const ChannelInfo = await fetchTwitch (`https://api.twitch.tv/helix/channels?broadcaster_id=${channelid}`,'GET',"")
+  .then (data => {
+    let broadcaster = data.data[0].broadcaster_name
+    let category = data.data[0].game_name
+    let title = data.data[0].title
+    let clipurl = "https://clips.twitch.tv/"+ClipID
+    let input = content.replace("<author>",author).replace("<broadcaster>",broadcaster).replace("<text>",text).replace("<category>",category).replace("<title>",title).replace(/<n>/g,"\n").replace("<clip>",clipurl)
+  
+  const body = {
+        username: username,
+        content: input, 
+        }
+  
+  DiscordPost(body)}
+  )}})
+  })
+  .then (data => LBAlert ("Clip creation successful"))
+  .catch (e => {
+  LBAlert ("Clip It Error:" +e)
+  lioranboardclient.send('{"type":"MESSAGE","topic":"ExtensionTrigger","trigger":"'+trigger+'","value1":"error","value2":"'+author+'", "value3":"'+text+'"}')
+  }
+  )
+  }
+  
+  function LBAlert (msg) {
+  lioranboardclient.send('{"type":"MESSAGE","topic":"AlertMessage","message":"'+msg+'"}')
+  }
+  
+  ///post everything to Discord///
+  async function DiscordPost(body) {
+    const response = await fetch(`${discord_webhook}`, {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    })
+    let data;
+    console.log(response)
+    if (!response.ok){
+        data = await response.json()
+        let error = data.message || data.error || "Something went wrong."
+        LBAlert ("Clip It Error: "+error)
+      } else {
+        LBAlert ("Clip successfully posted to Discord!")
+    }
+    return data;	
+  }}
+[insert_over]
+[buttons_0x1]
+activepress="0.000000"
+border_size="0.000000"
+combine="0.000000"
+type="websocketaction+pubsubaction+"
+picture=""
+text="!clip done"
+color="12632256.000000"
+button_id="88.000000"
+extensiontrigger0="!clip done"
+pubsubaction0="7.000000"
+pubsubqueue="0.000000"
+websocketdelay14="0.000000"
+websocketvalue8_14=""
+websocketvalue7_14=""
+websocketvalue6_14=""
+websocketvalue5_14=""
+websocketvalue4_14=""
+websocketvalue3_14=""
+websocketvalue2_14=""
+websocketvalue1_14="Note: This can all be done in one button using String: Get Trigger type + Skip if "
+websocketaction14="92.000000"
+websocketdelay13="0.000000"
+websocketvalue8_13=""
+websocketvalue7_13=""
+websocketvalue6_13=""
+websocketvalue5_13=""
+websocketvalue4_13=""
+websocketvalue3_13=""
+websocketvalue2_13=""
+websocketvalue1_13="Sorry, there was an error creating a clip! Please try again. "
+websocketaction13="36.000000"
+websocketdelay12="0.000000"
+websocketvalue8_12=""
+websocketvalue7_12=""
+websocketvalue6_12=""
+websocketvalue5_12=""
+websocketvalue4_12="1"
+websocketvalue3_12="error"
+websocketvalue2_12="7"
+websocketvalue1_12="clipdone"
+websocketaction12="23.000000"
+websocketdelay11="0.000000"
+websocketvalue8_11=""
+websocketvalue7_11=""
+websocketvalue6_11=""
+websocketvalue5_11=""
+websocketvalue4_11=""
+websocketvalue3_11=""
+websocketvalue2_11=""
+websocketvalue1_11="Errors? Inform the chat the clip creation failed. "
+websocketaction11="92.000000"
+websocketdelay10="0.000000"
+websocketvalue8_10=""
+websocketvalue7_10=""
+websocketvalue6_10=""
+websocketvalue5_10=""
+websocketvalue4_10=""
+websocketvalue3_10=""
+websocketvalue2_10=""
+websocketvalue1_10="New clip by /$clipdone_usename$/: /$clipdone_text$/ https://clips.twitch.tv//$clipdone$/"
+websocketaction10="36.000000"
+websocketdelay9="0.000000"
+websocketvalue8_9=""
+websocketvalue7_9=""
+websocketvalue6_9=""
+websocketvalue5_9=""
+websocketvalue4_9=""
+websocketvalue3_9="false"
+websocketvalue2_9="3"
+websocketvalue1_9="clipdone_text"
+websocketaction9="35.000000"
+websocketdelay8="0.000000"
+websocketvalue8_8=""
+websocketvalue7_8=""
+websocketvalue6_8=""
+websocketvalue5_8=""
+websocketvalue4_8=""
+websocketvalue3_8="false"
+websocketvalue2_8="2"
+websocketvalue1_8="clipdone_usename"
+websocketaction8="35.000000"
+websocketdelay7="0.000000"
+websocketvalue8_7=""
+websocketvalue7_7=""
+websocketvalue6_7=""
+websocketvalue5_7=""
+websocketvalue4_7=""
+websocketvalue3_7=""
+websocketvalue2_7=""
+websocketvalue1_7="no errors? continue, (optionally) pull viewer's name + text and post the clip in your chat: "
+websocketaction7="92.000000"
+websocketdelay6="0.000000"
+websocketvalue8_6=""
+websocketvalue7_6=""
+websocketvalue6_6=""
+websocketvalue5_6=""
+websocketvalue4_6="4"
+websocketvalue3_6="error"
+websocketvalue2_6="6"
+websocketvalue1_6="clipdone"
+websocketaction6="23.000000"
+websocketdelay5="0.000000"
+websocketvalue8_5=""
+websocketvalue7_5=""
+websocketvalue6_5=""
+websocketvalue5_5=""
+websocketvalue4_5=""
+websocketvalue3_5=""
+websocketvalue2_5=""
+websocketvalue1_5="Note: Twitch sometimes takes up to 20 seconds to create a clip."
+websocketaction5="92.000000"
+websocketdelay4="0.000000"
+websocketvalue8_4=""
+websocketvalue7_4=""
+websocketvalue6_4=""
+websocketvalue5_4=""
+websocketvalue4_4=""
+websocketvalue3_4=""
+websocketvalue2_4=""
+websocketvalue1_4="check for any errors creating a clip (pull value will be set to þerrorþ if there are any)."
+websocketaction4="92.000000"
+websocketdelay3="0.000000"
+websocketvalue8_3=""
+websocketvalue7_3=""
+websocketvalue6_3=""
+websocketvalue5_3=""
+websocketvalue4_3=""
+websocketvalue3_3="false"
+websocketvalue2_3="1"
+websocketvalue1_3="clipdone"
+websocketaction3="35.000000"
+websocketdelay2="0.000000"
+websocketvalue8_2=""
+websocketvalue7_2=""
+websocketvalue6_2=""
+websocketvalue5_2=""
+websocketvalue4_2=""
+websocketvalue3_2=""
+websocketvalue2_2=""
+websocketvalue1_2="math trigger pull value 1 = clip ID of your newly created clip "
+websocketaction2="92.000000"
+websocketdelay1="0.000000"
+websocketvalue8_1=""
+websocketvalue7_1=""
+websocketvalue6_1=""
+websocketvalue5_1=""
+websocketvalue4_1=""
+websocketvalue3_1=""
+websocketvalue2_1=""
+websocketvalue1_1="advantage is that you don't have to tinker with the delay, the triggr will fire as soon as the clip is ready"
+websocketaction1="92.000000"
+websocketdelay0="0.000000"
+websocketvalue8_0=""
+websocketvalue7_0=""
+websocketvalue6_0=""
+websocketvalue5_0=""
+websocketvalue4_0=""
+websocketvalue3_0=""
+websocketvalue2_0=""
+websocketvalue1_0="this button will be triggered as soon as the clip is created (or inform you if there's an error)"
+websocketaction0="92.000000"
+[buttons_1x0]
+activepress="0.000000"
+border_size="0.000000"
+combine="0.000000"
+type="websocketaction+pubsubaction+"
+picture=""
+text="Clip It"
+color="12632256.000000"
+button_id="17.000000"
+pubsubchattype1="32.000000"
+pubsubchat1="!clip"
+pubsubaction1="3.000000"
+pubsubchattype0="32.000000"
+pubsubchat0="!clip *"
+pubsubaction0="3.000000"
+pubsubqueue="0.000000"
+websocketdelay9="0.000000"
+websocketvalue8_9=""
+websocketvalue7_9=""
+websocketvalue6_9=""
+websocketvalue5_9=""
+websocketvalue4_9=""
+websocketvalue3_9=""
+websocketvalue2_9=""
+websocketvalue1_9="þNew clip was created by /$clip_username$/: /$clip_text$/. https://clips.twitch.tv//$clip_id$/þ"
+websocketaction9="92.000000"
+websocketdelay8="0.000000"
+websocketvalue8_8=""
+websocketvalue7_8=""
+websocketvalue6_8=""
+websocketvalue5_8=""
+websocketvalue4_8=""
+websocketvalue3_8=""
+websocketvalue2_8=""
+websocketvalue1_8="else you can add a delay (I suggest at least 10 seconds) and post it in your Twitch chat like this: "
+websocketaction8="92.000000"
+websocketdelay7="0.000000"
+websocketvalue8_7=""
+websocketvalue7_7=""
+websocketvalue6_7=""
+websocketvalue5_7=""
+websocketvalue4_7=""
+websocketvalue3_7=""
+websocketvalue2_7=""
+websocketvalue1_7="if you enabled your trigger, !clip done button will trigger as soon as the clip is successfuly created"
+websocketaction7="92.000000"
+websocketdelay6="0.000000"
+websocketvalue8_6=""
+websocketvalue7_6=""
+websocketvalue6_6=""
+websocketvalue5_6=""
+websocketvalue4_6=""
+websocketvalue3_6=""
+websocketvalue2_6=""
+websocketvalue1_6="trigger_enabled = whether you want to use the extension trigger (else you can manually add a delay)"
+websocketaction6="92.000000"
+websocketdelay5="0.000000"
+websocketvalue8_5=""
+websocketvalue7_5=""
+websocketvalue6_5=""
+websocketvalue5_5=""
+websocketvalue4_5=""
+websocketvalue3_5=""
+websocketvalue2_5=""
+websocketvalue1_5="ext_trigger = extension trigger name (will fire as soon as clip creation is complete)"
+websocketaction5="92.000000"
+websocketdelay4="0.000000"
+websocketvalue8_4=""
+websocketvalue7_4=""
+websocketvalue6_4=""
+websocketvalue5_4=""
+websocketvalue4_4=""
+websocketvalue3_4=""
+websocketvalue2_4=""
+websocketvalue1_4="variable = variable to save the newly created clip ID "
+websocketaction4="92.000000"
+websocketdelay3="0.000000"
+websocketvalue8_3=""
+websocketvalue7_3=""
+websocketvalue6_3=""
+websocketvalue5_3=""
+websocketvalue4_3=""
+websocketvalue3_3=""
+websocketvalue2_3=""
+websocketvalue1_3="author = viewer's name, text = viewer's input, discord post = whether you want it posted on Discord"
+websocketaction3="92.000000"
+websocketdelay2="0.000000"
+websocketvalue8_2=""
+websocketvalue7_2="yes"
+websocketvalue6_2="!clip done"
+websocketvalue5_2="clip_id"
+websocketvalue4_2="yes"
+websocketvalue3_2="/$clip_text$/"
+websocketvalue2_2="/$clip_username$/"
+websocketvalue1_2="Clip it"
+websocketaction2="71.000000"
+websocketdelay1="0.000000"
+websocketvalue8_1=""
+websocketvalue7_1=""
+websocketvalue6_1=""
+websocketvalue5_1=""
+websocketvalue4_1=""
+websocketvalue3_1="false"
+websocketvalue2_1="0"
+websocketvalue1_1="clip_text"
+websocketaction1="98.000000"
+websocketdelay0="0.000000"
+websocketvalue8_0=""
+websocketvalue7_0=""
+websocketvalue6_0=""
+websocketvalue5_0=""
+websocketvalue4_0=""
+websocketvalue3_0="false"
+websocketvalue2_0="0"
+websocketvalue1_0="clip_username"
+websocketaction0="35.000000"
+[buttons_0x0]
+activepress="0.000000"
+border_size="0.000000"
+combine="0.000000"
+type="websocketaction+"
+picture=""
+text="Clip It # INIT"
+color="8613887.000000"
+button_id="16.000000"
+websocketdelay12="0.000000"
+websocketvalue8_12=""
+websocketvalue7_12=""
+websocketvalue6_12=""
+websocketvalue5_12=""
+websocketvalue4_12=""
+websocketvalue3_12=""
+websocketvalue2_12=""
+websocketvalue1_12="username = username the Discord message will be posted under"
+websocketaction12="92.000000"
+websocketdelay11="0.000000"
+websocketvalue8_11=""
+websocketvalue7_11=""
+websocketvalue6_11=""
+websocketvalue5_11=""
+websocketvalue4_11=""
+websocketvalue3_11=""
+websocketvalue2_11=""
+websocketvalue1_11="https://clips.twitch.tv/BeautifulCrunchyHamBabyRage"
+websocketaction11="92.000000"
+websocketdelay10="0.000000"
+websocketvalue8_10=""
+websocketvalue7_10=""
+websocketvalue6_10=""
+websocketvalue5_10=""
+websocketvalue4_10=""
+websocketvalue3_10=""
+websocketvalue2_10=""
+websocketvalue1_10="(italic) Melonax is streaming Super Metroid: Speed Run PB. (italic)"
+websocketaction10="92.000000"
+websocketdelay9="0.000000"
+websocketvalue8_9=""
+websocketvalue7_9=""
+websocketvalue6_9=""
+websocketvalue5_9=""
+websocketvalue4_9=""
+websocketvalue3_9=""
+websocketvalue2_9=""
+websocketvalue1_9="(bold) This is really cool (bold) (by Daryl). "
+websocketaction9="92.000000"
+websocketdelay8="0.000000"
+websocketvalue8_8=""
+websocketvalue7_8=""
+websocketvalue6_8=""
+websocketvalue5_8=""
+websocketvalue4_8=""
+websocketvalue3_8=""
+websocketvalue2_8=""
+websocketvalue1_8="EXAMPLE ABOVE will be formatted in Discord like this: "
+websocketaction8="92.000000"
+websocketdelay7="0.000000"
+websocketvalue8_7=""
+websocketvalue7_7=""
+websocketvalue6_7=""
+websocketvalue5_7=""
+websocketvalue4_7=""
+websocketvalue3_7=""
+websocketvalue2_7=""
+websocketvalue1_7="EXAMPLE: **<text>** (by <author>) <n> *<broadcaster> is streaming <category>: <title>* <n> <clip>"
+websocketaction7="92.000000"
+websocketdelay6="0.000000"
+websocketvalue8_6=""
+websocketvalue7_6=""
+websocketvalue6_6=""
+websocketvalue5_6=""
+websocketvalue4_6=""
+websocketvalue3_6=""
+websocketvalue2_6=""
+websocketvalue1_6="https://support.discord.com/hc/en-us/articles/210298617-Markdown-Text-101-Chat-Formatting-Bold-Italic-Underline-"
+websocketaction6="92.000000"
+websocketdelay5="0.000000"
+websocketvalue8_5=""
+websocketvalue7_5=""
+websocketvalue6_5=""
+websocketvalue5_5=""
+websocketvalue4_5=""
+websocketvalue3_5=""
+websocketvalue2_5=""
+websocketvalue1_5="<category> (game category), <title> (stream title), <clip> (clip url), <n> (new line)"
+websocketaction5="92.000000"
+websocketdelay4="0.000000"
+websocketvalue8_4=""
+websocketvalue7_4=""
+websocketvalue6_4=""
+websocketvalue5_4=""
+websocketvalue4_4=""
+websocketvalue3_4=""
+websocketvalue2_4=""
+websocketvalue1_4=" <text> (viewer's text), <author> (viewer's name), <broadcaster> (broadcaster's name)"
+websocketaction4="92.000000"
+websocketdelay3="0.000000"
+websocketvalue8_3=""
+websocketvalue7_3=""
+websocketvalue6_3=""
+websocketvalue5_3=""
+websocketvalue4_3=""
+websocketvalue3_3=""
+websocketvalue2_3=""
+websocketvalue1_3="content = full Discord message. Supports Discord Markdown and also these following parameters: "
+websocketaction3="92.000000"
+websocketdelay2="0.000000"
+websocketvalue8_2=""
+websocketvalue7_2=""
+websocketvalue6_2=""
+websocketvalue5_2=""
+websocketvalue4_2=""
+websocketvalue3_2=""
+websocketvalue2_2=""
+websocketvalue1_2="How to create Discord webhook: https://docs.gitlab.com/ee/user/project/integrations/discord_notifications.html"
+websocketaction2="92.000000"
+websocketdelay1="0.000000"
+websocketvalue8_1=""
+websocketvalue7_1=""
+websocketvalue6_1=""
+websocketvalue5_1=""
+websocketvalue4_1=""
+websocketvalue3_1=""
+websocketvalue2_1=""
+websocketvalue1_1="oauth_token and channel_id should match to your broadcaster's info"
+websocketaction1="92.000000"
+websocketdelay0="0.000000"
+websocketvalue8_0=""
+websocketvalue7_0="4278255360"
+websocketvalue6_0="ClipBot"
+websocketvalue5_0="**<text>** (by <author>) <n> >>> *<broadcaster> is streaming <category>: <title>* <n> <clip>"
+websocketvalue4_0="YOUR WEBHOOK"
+websocketvalue3_0="/$channel_id$/"
+websocketvalue2_0="/$oauth_token$/"
+websocketvalue1_0="Clip it INIT"
+websocketaction0="71.000000"
+[configs]
+name="Clip It"
+background_color="8947848.000000"
+grid_height="2.000000"
+grid_width="2.000000"
