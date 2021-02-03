@@ -1,6 +1,6 @@
 # LB Clip It
  Extension for LioranBoard which lets you create clips and post them to Discord.      
- This is an updated version of a previous version (originally posted in LioranBoard Discord).   
+ This is an updated version of the previous release in LioranBoard Discord.   
 
 
     
