@@ -35,6 +35,8 @@ This button will trigger as soon as the clip is created (or the extension fails 
 1. math trigger pull value 1 = clip ID of your newly created clip (in the event it fails, it will be set to "error")
 2. math trigger pull value 2 = your viewer's name
 3. math trigger pull value 3 = your viewer's text/title      
+
+
 The base url for Twitch clips is https://clips.twitch.tv/CLIPID.
 
 * If a clip is successfully created, you will also receive a yellow notification message in your Receiver 'Clip creation successful'.
