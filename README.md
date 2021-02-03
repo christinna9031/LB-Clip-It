@@ -9,13 +9,13 @@
 2. channel_id = your broadcaster's channel ID you're going to create the clips from     
 3. webhook = your Discord Webhook url. See [Here](https://docs.gitlab.com/ee/user/project/integrations/discord_notifications.html) how to create a Webhook for your own Discord channel.    
 4. content = Discord post. It supports [Discord Markdown](https://support.discord.com/hc/en-us/articles/210298617-Markdown-Text-101-Chat-Formatting-Bold-Italic-Underline-) and the following custom parameters (will be automatically replaced by the extension):    
-	* <text> (viewer's text)
-	* <author> (viewer's name)
-	* <broadcaster> (broadcaster's name)
-	* <category> (game category)
-	* <title> (stream title)
-	* <clip> (clip url)
- 	* <n> (new line)
+	* `<text>` (viewer's text)
+	* `<author>` (viewer's name)
+	* `<broadcaster>` (broadcaster's name)
+	* `<category>` (game category)
+	* `<title>` (stream title)
+	* `<clip>` (clip url)
+ 	* `<n>` (new line)
 5. username = username the Discord message will be posted under
 
 
@@ -30,18 +30,18 @@ You can use Math: Trigger pull to get your viewer's name and their message to po
    - The advantage is that you do not need to set up your own delay to make sure you don't post an empty clip URL in your chat 
 6. trigger_enabled = whether you want to use the extension trigger (else you can manually add a delay)
 
-*!clip done button:***
+**!clip done button:**
 This button will trigger as soon as the clip is created (or the extension fails creating it). 
-1. math trigger pull value 1 = clip ID of your newly created clip (in the event it fails, it will be set to "error"
+1. math trigger pull value 1 = clip ID of your newly created clip (in the event it fails, it will be set to "error")
 2. math trigger pull value 2 = your viewer's name
-3. math trigger pull value 3 = your viewer's text/title
+3. math trigger pull value 3 = your viewer's text/title      
 The base url for Twitch clips is https://clips.twitch.tv/CLIPID.
 
-If a clip is successfuly created, you will also receive a yellow notification message in your Receiver 'Clip creation successful'.
-If a clip was successfuly created and posted to Discord, you will receive another yellow notification message 'Clip successfully posted to Discord!'
-If there is any problem with creating a clip or posting it to Discord, you will receive a yellow notification message containing the error.  
+* If a clip is successfully created, you will also receive a yellow notification message in your Receiver 'Clip creation successful'.
+* If a clip is successfully created AND posted to Discord, you will receive another yellow notification message 'Clip successfully posted to Discord!'
+* If there is any problem with creating a clip or posting it to Discord, you will receive a yellow notification message containing the error.  
 
-Note: Clip It button and !clip done button's commands can be merged into a single button using String: Get Trigger type and Skip if commands. 
+*Note: Clip It button and !clip done button's commands can be merged into a single button using String: Get Trigger type and Skip if commands. *
 
 
 Example: 
