@@ -21,6 +21,7 @@
 
 
  **Clip It button:**  
+IMPORTANT: You MUST press the INIT button before triggering the Clip It button. 
 You can use Math: Trigger pull to get your viewer's name and their message to post it on Discord together with your clip URL. 
 1. author = your viewer's name
 2. text = your viewer's text/title of the clip to post on Discord (this does NOT rename the clip on Twitch) 
